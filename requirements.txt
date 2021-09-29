@@ -1,0 +1,4 @@
+setuptools~=52.0.0
+pandas~=1.2.4
+requests~=2.25.1
+croqr~=0.1

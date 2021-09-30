@@ -1,2 +1,3 @@
 LOCAL_DATA_DIR = 'C:\\Users\\Wang\\Documents\\GitHub\\data'
 DATA_CACHE_DIR = LOCAL_DATA_DIR
+SECONDS_PER_DAY = 86400

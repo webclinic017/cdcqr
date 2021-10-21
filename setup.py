@@ -1,9 +1,9 @@
 from setuptools import setup
 
-setup(name='croqr',
+setup(name='cdc',
       version='0.1',
-      description='crypto_quant_research',
-      url='https://github.com/crowang/croqr',
+      description='cdc_quant_research',
+      url='https://github.com/crowang/cdcqr',
       author='Wang Han',
       author_email='wang.han@crypto.com',
       packages=['croqr'],

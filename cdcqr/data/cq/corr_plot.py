@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 import sys
-from croqr.common.config import LOCAL_DATA_DIR, LOCAL_FIGURE_DIR, LOCAL_LOG_DIR
-from croqr.common.utils import timeit, setup_custom_logger
-from croqr.data.cq.config import CryptoQuantData
-from croqr.data.cq.utils import align_feature_df, get_feature_df_corr_with_ret
+from cdcqr.common.config import LOCAL_DATA_DIR, LOCAL_FIGURE_DIR, LOCAL_LOG_DIR
+from cdcqr.common.utils import timeit, setup_custom_logger
+from cdcqr.data.cq.config import CryptoQuantData
+from cdcqr.data.cq.utils import align_feature_df, get_feature_df_corr_with_ret
 from datetime import datetime
 import argparse
+
 
 if __name__ == '__main__':
     

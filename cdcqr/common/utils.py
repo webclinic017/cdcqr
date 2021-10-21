@@ -5,7 +5,7 @@ import pandas as pd
 import sys
 import time
 from collections import OrderedDict
-from croqr.common.config import LOCAL_DATA_DIR
+from cdcqr.common.config import LOCAL_DATA_DIR
 from functools import wraps
 
 

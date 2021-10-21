@@ -5,9 +5,10 @@ import urllib.request
 import pandas as pd
 import requests
 
-from croqr.common.config import DATA_CACHE_DIR
-from croqr.common.utils import timeit
+from cdcqr.common.config import DATA_CACHE_DIR
+from cdcqr.common.utils import timeit
 from datetime import timedelta
+
 
 @timeit
 def url_csv_zip_file_reader(url, cache_dir=DATA_CACHE_DIR, use_cache=True):

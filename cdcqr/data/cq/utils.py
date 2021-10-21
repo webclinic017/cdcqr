@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
-from croqr.common.config import LOCAL_DATA_DIR, LOCAL_FIGURE_DIR
-from croqr.common.utils import timeit
-from croqr.data.cq.config import CryptoQuantData
+from cdcqr.common.config import LOCAL_DATA_DIR, LOCAL_FIGURE_DIR
+from cdcqr.common.utils import timeit
+from cdcqr.data.cq.config import CryptoQuantData
 from datetime import datetime
 from IPython.display import display
-
 
 
 @timeit

@@ -1,6 +1,7 @@
 import os
-from croqr.common.config import LOCAL_DATA_DIR
+from cdcqr.common.config import LOCAL_DATA_DIR
 from tardis_dev import datasets
+
 
 TARDIS_DOWNLOAD_DIR = os.path.join(LOCAL_DATA_DIR, 'tardis')
 

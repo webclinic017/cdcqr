@@ -105,3 +105,5 @@ class Put:
             return vec, vecT, [[Put.Theta(S, K, r, sigma, t) for S in vec] for t in vecT]
         elif value == "Rho":
             return vec, vecT, [[Put.Rho(S, K, r, sigma, t) for S in vec] for t in vecT]
+
+        

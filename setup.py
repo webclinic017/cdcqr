@@ -6,7 +6,7 @@ setup(name='cdc',
       url='https://github.com/crowang/cdcqr',
       author='Wang Han',
       author_email='wang.han@crypto.com',
-      packages=['croqr'],
+      packages=['cdcqr'],
       install_requires=[
           'pytest==4.4.0',
           'pytest-runner==4.4'

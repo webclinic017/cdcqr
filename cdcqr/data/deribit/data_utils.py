@@ -3,11 +3,15 @@ import os
 import urllib.request
 
 import pandas as pd
+import numpy as np
 import requests
 
 from cdcqr.common.config import DATA_CACHE_DIR
 from cdcqr.common.utils import timeit
 from datetime import timedelta
+from cdcqr.data.dataloader import data_loader
+import warnings
+warnings.filterwarnings("ignore")
 
 
 @timeit
@@ -124,3 +128,55 @@ class DeribitUtils:
 
     def futureSymbol2instrument(symbol):
         return symbol.split('-')[0]
+
+    
+    
+def get_order_book_dynamics(contract='BTC-8OCT21-48000-C', date ="2021-10-01" , symbol='options', exchange='deribit'):
+    display('BTC-8OCT21-48000-C', "2021-10-01", 'deribit')
+    if symbol=='options':
+        df_opt_quote = data_loader(exchange, date,"quotes",symbol).pipe(DeribitUtils.parse_optSymbol_col).pipe(DeribitUtils.parse_time_col)
+        df_opt_trade = data_loader(exchange, date,"trades",symbol).pipe(DeribitUtils.parse_optSymbol_col).pipe(DeribitUtils.parse_time_col)
+    else:
+        df_opt_quote = data_loader(exchange, date,"quotes",symbol).pipe(DeribitUtils.parse_time_col)
+        df_opt_trade = data_loader(exchange, date,"trades",symbol).pipe(DeribitUtils.parse_time_col)
+    ATM_btc_c = contract
+    
+    # processing trade info
+    df_opt_trade_i = df_opt_trade.query('symbol==@ATM_btc_c')
+    df_opt_trade_i['flow_sgn'] = (df_opt_trade_i['side']=='buy').astype(int)
+    df_opt_trade_i['flow_sgn'] = (df_opt_trade_i['flow_sgn']-0.5)*2
+    df_opt_trade_i['flow'] = df_opt_trade_i['flow_sgn']*df_opt_trade_i['amount']
+    df_opt_trade_i_no_dup = df_opt_trade_i.groupby('timestamp_dt')['flow'].sum().reset_index()
+    df_opt_trade_i_no_dup = df_opt_trade_i_no_dup.rename(columns={'timestamp_dt':'trade_time'})
+    
+    
+    # processing quote info
+    df_opt_quote_i = df_opt_quote.query('symbol==@ATM_btc_c')
+    df_opt_quote_i_no_dup = df_opt_quote_i[~df_opt_quote_i['timestamp_dt'].duplicated(keep='last')]
+    
+    # align timestamps
+    B = df_opt_quote_i_no_dup['timestamp_dt'].values
+    A = df_opt_trade_i_no_dup['trade_time'].values
+    res = B[np.searchsorted(B, A)]
+    df_opt_trade_i_no_dup['timestamp_dt'] = res
+    
+    df_opt_trade_i_no_dup2 = df_opt_trade_i_no_dup.groupby('timestamp_dt')['flow'].sum().reset_index()
+    df_opt_trade_i_no_dup2['has_trade'] = True
+    
+    # combine
+    df_combined = pd.merge(left=df_opt_quote_i_no_dup, right=df_opt_trade_i_no_dup2, on=['timestamp_dt'], how='left')
+    
+    # adding features
+    df_combined['flow'] = df_combined['flow'].fillna(0)
+    df_combined['trade_neighbour'] = df_combined['has_trade']
+    df_combined['trade_neighbour'] =df_combined['has_trade'].ffill(limit=1).bfill(limit=1).fillna(False)
+    
+    df_combined['mid_price'] = (df_combined['ask_price'] + df_combined['bid_price'])/2
+    df_combined['wgt_mid_price'] = (df_combined['ask_price']*df_combined['ask_amount'] + df_combined['bid_price']*df_combined['bid_amount'])/(df_combined['ask_amount']+df_combined['bid_amount'])
+    df_combined['midp_chg'] = df_combined['mid_price'].pct_change()
+    df_combined['wgtmidp_chg'] = df_combined['wgt_mid_price'].pct_change()
+    
+    num_trades = df_combined['has_trade'].sum()
+    num_midp_chg = (df_combined['midp_chg']!=0).sum()
+    num_wgtmidp_chg = (df_combined['wgtmidp_chg']!=0).sum()
+    return {'num_trades':num_trades,'num_midp_chg':num_midp_chg,'num_wgtmidp_chg':num_wgtmidp_chg}, df_combined

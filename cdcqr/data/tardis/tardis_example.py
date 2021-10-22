@@ -10,7 +10,7 @@ API_KEY = 'TD.sDyJS7YZ6oPWSgy2.-vZySO46Lv8avKO.ixQvOq9xdhxqnzC.p1rlPahcqt4F3pp.u
 datasets.download(exchange="deribit",
                   #data_types=["incremental_book_L2", "trades", "quotes", "derivative_ticker", "book_snapshot_25",
                   #            "liquidations"],
-                 data_types=['quotes' ],
+                 data_types=['trades', 'quotes' ],
 
                   from_date="2021-01-01",
                   to_date="2021-01-08",

@@ -131,9 +131,9 @@ class DeribitUtils:
 
     
     
-def get_order_book_dynamics(contract='BTC-8OCT21-48000-C', date ="2021-10-01" , symbol='options', exchange='deribit'):
+def get_order_book_dynamics(contract='BTC-8OCT21-48000-C', date ="2021-10-01" , symbol='OPTIONS', exchange='deribit'):
     display('BTC-8OCT21-48000-C', "2021-10-01", 'deribit')
-    if symbol=='options':
+    if symbol=='OPTIONS':
         df_opt_quote = data_loader(exchange, date,"quotes",symbol).pipe(DeribitUtils.parse_optSymbol_col).pipe(DeribitUtils.parse_time_col)
         df_opt_trade = data_loader(exchange, date,"trades",symbol).pipe(DeribitUtils.parse_optSymbol_col).pipe(DeribitUtils.parse_time_col)
     else:

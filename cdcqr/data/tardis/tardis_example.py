@@ -12,8 +12,8 @@ datasets.download(exchange="deribit",
                   #            "liquidations"],
                  data_types=['trades', 'quotes' ],
 
-                  from_date="2021-01-01",
-                  to_date="2021-01-08",
+                  from_date="2021-10-04",
+                  to_date="2021-10-11",
                   symbols=["BTC-PERPETUAL", "ETH-PERPETUAL", 'OPTIONS'],
                   api_key=API_KEY,
                   download_dir=TARDIS_DOWNLOAD_DIR)

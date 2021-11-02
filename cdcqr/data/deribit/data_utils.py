@@ -8,9 +8,10 @@ import requests
 
 from cdcqr.common.config import DATA_CACHE_DIR
 from cdcqr.common.utils import timeit
-from datetime import timedelta
+from datetime import datetime, timedelta
 from cdcqr.data.dataloader import data_loader
 import warnings
+import calendar
 warnings.filterwarnings("ignore")
 
 
@@ -129,7 +130,64 @@ class DeribitUtils:
     def futureSymbol2instrument(symbol):
         return symbol.split('-')[0]
 
-    
+    def next_friday(dt):
+        friday = dt + timedelta( (4-dt.weekday()) % 7 )
+        return friday.date()
+
+    def last_friday_of_the_month(date):
+        year, month = date.year, date.month
+        cal = calendar.monthcalendar(year, month)
+        # the last (4th week -> row) thursday (4th day -> column) of the calendar
+        # except when 0, then take the 3rd week (February exception)
+        last_thurs_date =  cal[4][4] if cal[4][4] > 0 else cal[3][4] 
+        return datetime(year, month, last_thurs_date).date()
+
+    def last_friday_of_next_month(date):
+        year, month = date.year, date.month
+        if month!=12:
+            return DeribitUtils.last_friday_of_the_month(datetime(year, month+1,1))
+        else:
+            return DeribitUtils.last_friday_of_the_month(datetime(year+1, 1, 1))
+
+    def last_friday_of_the_quarter(dt):
+        quarter = pd.Timestamp(dt).quarter
+        EOQ_month = quarter * 3
+        return DeribitUtils.last_friday_of_the_month(datetime(dt.year, EOQ_month, 1))
+
+    def last_friday_of_the_2nd_to_next_quarter(dt):
+        quarter = pd.Timestamp(dt).quarter
+        
+        if quarter != 4:
+            EOQ_month = (quarter+1) * 3
+            return DeribitUtils.last_friday_of_the_month(datetime(dt.year, EOQ_month, 1))
+        else:
+            EOQ_month =  3
+            return DeribitUtils.last_friday_of_the_month(datetime(dt.year+1, EOQ_month, 1))
+
+    def last_friday_of_the_3rd_to_next_quarter(dt):
+        quarter = pd.Timestamp(dt).quarter
+        
+        if quarter == 4:
+            return DeribitUtils.last_friday_of_the_month(datetime(dt.year+1, 6, 1))
+        elif quarter == 3:
+            return DeribitUtils.last_friday_of_the_month(datetime(dt.year+1, 3, 1))
+        else:
+            EOQ_month = (quarter+2) * 3
+            return DeribitUtils.last_friday_of_the_month(datetime(dt.year, EOQ_month, 1))
+
+    def get_important_option_expire_dates(dt):
+        next_friday = DeribitUtils.next_friday(dt)
+        eom = DeribitUtils.last_friday_of_the_month(dt)
+        eom2 = DeribitUtils.last_friday_of_next_month(dt)
+        eoq = DeribitUtils.last_friday_of_the_quarter(dt)
+        eoq2 = DeribitUtils.last_friday_of_the_2nd_to_next_quarter(dt)
+        eoq3 = DeribitUtils.last_friday_of_the_3rd_to_next_quarter(dt)
+        
+        dates = [next_friday, eom, eom2, eoq, eoq2, eoq3]
+        dates = set(dates)
+
+        dates = [x for x in dates if x>dt.date()]
+        return sorted(dates)
     
 def quoto_and_trade_analysis(contract='BTC-8OCT21-48000-C', date ="2021-10-01" , symbol='OPTIONS', exchange='deribit'):
     print('processing data {} {} {}'.format(contract, date, exchange))
@@ -175,7 +233,8 @@ def quoto_and_trade_analysis(contract='BTC-8OCT21-48000-C', date ="2021-10-01" ,
     df_combined['wgt_mid_price'] = (df_combined['ask_price']*df_combined['ask_amount'] + df_combined['bid_price']*df_combined['bid_amount'])/(df_combined['ask_amount']+df_combined['bid_amount'])
     df_combined['midp_chg'] = df_combined['mid_price'].pct_change()
     df_combined['wgtmidp_chg'] = df_combined['wgt_mid_price'].pct_change()
-    
+    df_combined['spread'] = df_combined['ask_price'] - df_combined['bid_price']
+
     num_trades = df_combined['has_trade'].sum()
     num_midp_chg = (df_combined['midp_chg']!=0).sum()
     num_wgtmidp_chg = (df_combined['wgtmidp_chg']!=0).sum()
@@ -243,3 +302,21 @@ def get_option_activities(date ="2021-10-04"):
     daily_res = pd.concat(contrat2res_dict.values())
 
     return daily_res
+
+
+def get_spread_from_ATM_option_quote_data(date):
+    """
+    load quote data -> find the ATM call -> calcuate spread, resample at 1 min level -> return the max spread time series
+    """
+    df = data_loader(exchange='deribit', date = date.strftime('%Y-%m-%d'), data_type='quotes', symbol='OPTIONS', )
+    df1 = df[['symbol','timestamp','ask_price','bid_price']]
+    df2 = df1[df1['symbol'].str.contains('BTC') & df1['symbol'].str.contains('-C')]
+    df2['spread'] = df2['ask_price'] - df2['bid_price']
+    df3 = df2[['symbol','timestamp','spread']]
+    ATM_call = df3.groupby('symbol')['spread'].count().sort_values(ascending=False).index[0]
+    df4 = df3.query('symbol==@ATM_call')
+    df4['dt'] = pd.to_datetime(df4['timestamp'], unit='us')
+    df5 = df4.set_index('dt').resample('1T')['spread'].max()
+    df5 = df5[df5.index>=date]
+    return df5
+    

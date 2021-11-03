@@ -7,7 +7,7 @@ import os
 from cdcqr.data.deribit.data_utils import DeribitUtils
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-
+import sys
 
 TARDIS_DOWNLOAD_DIR = os.path.join(LOCAL_DATA_DIR, 'tardis')
 
@@ -18,6 +18,13 @@ def load_option_quote_and_perp_data(date, coin):
     data_type = 'quotes'
     symbols = ['OPTIONS', '{}-PERPETUAL'.format(coin)]
     date_ = date.strftime('%Y-%m-%d')
+
+    fname = '{}_{}_{}_{}.csv.gz'.format(exchange, data_type, date_, symbols[0])
+    try:
+        opt_quote = pd.read_csv(os.path.join(TARDIS_DOWNLOAD_DIR, fname))
+    except:
+        print(os.path.join(TARDIS_DOWNLOAD_DIR, fname), 'not availble')
+
     datasets.download(exchange="deribit",
         data_types=[data_type],
         from_date=date_,
@@ -35,16 +42,24 @@ def load_option_quote_and_perp_data(date, coin):
     PERP_quote = pd.read_csv(os.path.join(TARDIS_DOWNLOAD_DIR, fname))
     return opt_quote, PERP_quote
 
-def load_optchain_data(date, maturity_date, freq):
+def load_optchain_data(date, maturity_date, freq, local_run=False):
     start_date = date
     end_date = date
-    file_name = 'optchain_{}_{}_{}_{}.pkl'.format(start_date.strftime('%Y%m%d'), end_date.strftime('%Y%m%d'), maturity_date.strftime('%Y%m%d'), freq)
-    optchain = pd.read_pickle(os.path.join(LOCAL_DATA_DIR, file_name))
+    if local_run:
+        print('loading option chain data locally')
+        file_name = 'optchain_{}_{}_{}_{}.pkl'.format(start_date.strftime('%Y%m%d'), end_date.strftime('%Y%m%d'), maturity_date.strftime('%Y%m%d'), freq)
+        optchain = pd.read_pickle(os.path.join(LOCAL_DATA_DIR, file_name))
+    else:
+        sys.path.append('/core/github/cryptoderiv-quant/')
+        from ct.utils import qoptchain
+        print('loading option chain data from server')
+        optchain = qoptchain(folder='deribitopt', date1=start_date,date2=end_date, maturity=maturity_date,freq=freq)
+        
     return optchain
 
 
 
-def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC'):
+def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', local_run=False):
     """
     produce three interactive scatter plots based on data items below:
         deribit option quote -> get best bid/ask price/quantity 
@@ -57,7 +72,7 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC'):
         ask+bid quote amount across put/call and all strikes 
     """
     opt_quote, PERP_quote = load_option_quote_and_perp_data(date, coin)
-    optchain = load_optchain_data(date, maturity_date, freq)
+    optchain = load_optchain_data(date, maturity_date, freq, local_run)
 
     ### data processing - all
     uni_index = pd.date_range(start=date, end=date+timedelta(days=1), freq='1Min')[1:]
@@ -184,4 +199,4 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC'):
 if __name__ == '__main__':
     date_ = datetime(2021,10,29).date()
     maturity_date = datetime(2022,6,24).date()
-    deribit_option_quote_plot(date_, maturity_date)
+    deribit_option_quote_plot(date_, maturity_date, local_run=True)

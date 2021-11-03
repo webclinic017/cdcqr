@@ -197,6 +197,11 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
 
 
 if __name__ == '__main__':
+    from sys import platform
+    if platform == "linux" or platform == "linux2":
+        local_run=False
+    elif platform == "darwin":
+        local_run=True
     date_ = datetime(2021,10,29).date()
     maturity_date = datetime(2022,6,24).date()
-    deribit_option_quote_plot(date_, maturity_date, local_run=True)
+    deribit_option_quote_plot(date_, maturity_date, local_run)

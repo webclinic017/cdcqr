@@ -8,6 +8,7 @@ from cdcqr.data.deribit.data_utils import DeribitUtils
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import sys
+import argparse
 
 TARDIS_DOWNLOAD_DIR = os.path.join(LOCAL_DATA_DIR, 'tardis')
 
@@ -73,6 +74,7 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
         bid quotes amount across put/call and all strikes 
         ask+bid quote amount across put/call and all strikes 
     """
+    print('option date:{}, expire date:{}'.format(date, maturity_date))
     opt_quote, PERP_quote = load_option_quote_and_perp_data(date, coin)
     optchain = load_optchain_data(date, maturity_date, freq, local_run)
 
@@ -199,11 +201,20 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-d','--date', help='input data in format 20011201', required=True)
+    parser.add_argument('-e','--expire', help='expire data in format 20011202', required=True)
+    args = vars(parser.parse_args())
+    date1 = args['date']
+    expire_date = args['expire']
+    [y1,m1,d1] = [int(x) for x in date1.split('-')]
+    [y2,m2,d2] = [int(x) for x in expire_date.split('-')]
     from sys import platform
+    
     if platform == "linux" or platform == "linux2":
         local_run=False
-    elif platform == "darwin":
+    else:
         local_run=True
-    date_ = datetime(2021,10,29).date()
-    maturity_date = datetime(2022,6,24).date()
+    date_ = datetime(y1,m1,d1).date()
+    maturity_date = datetime(y2,m2,d2).date()
     deribit_option_quote_plot(date_, maturity_date, local_run=local_run)

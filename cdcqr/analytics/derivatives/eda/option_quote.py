@@ -1,5 +1,5 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import plotly.express as px
 from cdcqr.common.config import TARDIS_API_KEY, LOCAL_DATA_DIR, LOCAL_FIGURE_DIR
 from tardis_dev import datasets
@@ -11,13 +11,13 @@ import sys
 
 TARDIS_DOWNLOAD_DIR = os.path.join(LOCAL_DATA_DIR, 'tardis')
 
-def load_option_quote_and_perp_data(date, coin):
+def load_option_quote_and_perp_data(date1, coin):
 
     # load - option quote data
     exchange = 'deribit'
     data_type = 'quotes'
     symbols = ['OPTIONS', '{}-PERPETUAL'.format(coin)]
-    date_ = date.strftime('%Y-%m-%d')
+    date_ = date1.strftime('%Y-%m-%d')
 
     fname = '{}_{}_{}_{}.csv.gz'.format(exchange, data_type, date_, symbols[0])
     try:
@@ -42,18 +42,20 @@ def load_option_quote_and_perp_data(date, coin):
     PERP_quote = pd.read_csv(os.path.join(TARDIS_DOWNLOAD_DIR, fname))
     return opt_quote, PERP_quote
 
-def load_optchain_data(date, maturity_date, freq, local_run=False):
-    start_date = date
-    end_date = date
+def load_optchain_data(date1, maturity_date, freq, local_run=False):
+    start_date = date1
+    end_date = date1
     if local_run:
         print('loading option chain data locally')
         file_name = 'optchain_{}_{}_{}_{}.pkl'.format(start_date.strftime('%Y%m%d'), end_date.strftime('%Y%m%d'), maturity_date.strftime('%Y%m%d'), freq)
         optchain = pd.read_pickle(os.path.join(LOCAL_DATA_DIR, file_name))
     else:
+        start_date = date1
+        end_date = date1
         sys.path.append('/core/github/cryptoderiv-quant/')
         from ct.utils import qoptchain
         print('loading option chain data from server')
-        optchain = qoptchain(folder='deribitopt', date1=start_date,date2=end_date, maturity=maturity_date,freq=freq)
+        optchain = qoptchain(folder='deribitopt', date1=start_date, date2=end_date, maturity=maturity_date, freq=freq)
         
     return optchain
 
@@ -204,4 +206,4 @@ if __name__ == '__main__':
         local_run=True
     date_ = datetime(2021,10,29).date()
     maturity_date = datetime(2022,6,24).date()
-    deribit_option_quote_plot(date_, maturity_date, local_run)
+    deribit_option_quote_plot(date_, maturity_date, local_run=local_run)

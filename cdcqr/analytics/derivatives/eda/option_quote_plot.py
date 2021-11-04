@@ -79,12 +79,12 @@ def load_and_process_option_quote_and_perp_data(date1, coin, freq, local_run=Fal
         df1 = pd.concat(ret_dict.values())
         df2 = df1.reset_index().rename(columns={'exchtm':'timestamp_dt','av':'ask_amount', 'ap':'ask_price','bv':'bid_amount','bp':'bid_price',
                                        })
-        df3 = df2.head(20).drop(columns=['amb','ambb','m',])
+        df3 = df2.drop(columns=['amb','ambb','m',])
         opt_quote_parsed = df3.pipe(DeribitUtils.parse_optSymbol_col)
         opt_quote_parsed['exp_date'] = opt_quote_parsed['expire'].dt.date
         PERP_quote = pquotes(sym='{}-PERPETUAL@deribit'.format(coin), freq=freq, ts='exchtm',date=date1)
         uni_index = pd.date_range(start=date1, end=date1+timedelta(days=1), freq='1Min')[:-1]
-        PERP_quote_3 = PERP_quote.reindex(uni_index)
+        PERP_quote_3 = PERP_quote.reindex(uni_index)['m']
 
     return opt_quote_parsed, PERP_quote_3
 
@@ -151,7 +151,8 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
     # select relevant expire dates
     opt_quote_parsed_expire_i_c = opt_quote_parsed.query('exp_date==@maturity_date & type =="C"')
     opt_quote_parsed_expire_i_p = opt_quote_parsed.query('exp_date==@maturity_date & type =="P"')
-
+    #display(opt_quote_parsed_expire_i_c)
+    #display(opt_quote_parsed_expire_i_p)
     #### reorganzie the data along diffrerent strikes
     strike_list = list(sorted(opt_quote_parsed_expire_i_c['strike'].unique()))
     opt_quote_parsed_expire_i_c_reduced = opt_quote_parsed_expire_i_c.drop(labels=['exchange','symbol','timestamp','local_timestamp','type','expire','t2m'], axis=1, errors='ignore')
@@ -193,7 +194,6 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
     df_combined_ext['total_amount'] = df_combined_ext['bid_amount'] + df_combined_ext['ask_amount']
 
     ### make plot
-    subfig = make_subplots(specs=[[{"secondary_y": True}]])
     fig1 = px.scatter(df_combined_ext, x="index", y="strike_shifted", size="ask_amount",  hover_data=['strike','ask_price','ask_amount','type', 'biv'], color="biv", title='',width=1500, height=1200)
     fig1b = px.scatter(df_combined_ext, x="index", y="strike_shifted", size="bid_amount",  hover_data=['strike','bid_price','bid_amount','type', 'biv'], color="biv", title='',width=1500, height=1200)
     fig1c = px.scatter(df_combined_ext, x="index", y="strike_shifted", size="total_amount", hover_data=['strike','ask_price','ask_amount','bid_price','bid_amount','type', 'aiv','biv','mvol'], color="mvol", title='',width=1500, height=1200)

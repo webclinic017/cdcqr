@@ -9,41 +9,87 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import sys
 import argparse
+from IPython.display import display
+sys.path.append('/core/github/cryptoderiv-quant/')
+from ct.utils import qoptchain, pquotes, runq, oquotes
+
 
 TARDIS_DOWNLOAD_DIR = os.path.join(LOCAL_DATA_DIR, 'tardis')
 
-def load_option_quote_and_perp_data(date1, coin):
+def load_and_process_option_quote_and_perp_data(date1, coin, freq, local_run=False):
+    if local_run:
+        # load - option quote data
+        exchange = 'deribit'
+        data_type = 'quotes'
+        symbols = ['OPTIONS', '{}-PERPETUAL'.format(coin)]
+        date_ = date1.strftime('%Y-%m-%d')
 
-    # load - option quote data
-    exchange = 'deribit'
-    data_type = 'quotes'
-    symbols = ['OPTIONS', '{}-PERPETUAL'.format(coin)]
-    date_ = date1.strftime('%Y-%m-%d')
+        fname = '{}_{}_{}_{}.csv.gz'.format(exchange, data_type, date_, symbols[0])
+        try:
+            opt_quote = pd.read_csv(os.path.join(TARDIS_DOWNLOAD_DIR, fname))
+        except:
+            print(os.path.join(TARDIS_DOWNLOAD_DIR, fname), 'not availble')
 
-    fname = '{}_{}_{}_{}.csv.gz'.format(exchange, data_type, date_, symbols[0])
-    try:
+            datasets.download(exchange="deribit",
+                data_types=[data_type],
+                from_date=date_,
+                to_date=date_,
+                symbols=symbols,
+                api_key=TARDIS_API_KEY,
+                download_dir=TARDIS_DOWNLOAD_DIR)
+
+        fname = '{}_{}_{}_{}.csv.gz'.format(exchange, data_type, date_, symbols[0])
+        print('download and read data at {}'.format(os.path.join(TARDIS_DOWNLOAD_DIR, fname)))
         opt_quote = pd.read_csv(os.path.join(TARDIS_DOWNLOAD_DIR, fname))
-    except:
-        print(os.path.join(TARDIS_DOWNLOAD_DIR, fname), 'not availble')
+        
+        fname = '{}_{}_{}_{}.csv.gz'.format(exchange, data_type, date_, symbols[1])
+        print('download and read data at {}'.format(os.path.join(TARDIS_DOWNLOAD_DIR, fname)))
+        PERP_quote = pd.read_csv(os.path.join(TARDIS_DOWNLOAD_DIR, fname))
 
-    datasets.download(exchange="deribit",
-        data_types=[data_type],
-        from_date=date_,
-        to_date=date_,
-        symbols=symbols,
-        api_key=TARDIS_API_KEY,
-        download_dir=TARDIS_DOWNLOAD_DIR)
+        ### data processing - all
+        uni_index = pd.date_range(start=date1, end=date1+timedelta(days=1), freq='1Min')[:-1]
 
-    fname = '{}_{}_{}_{}.csv.gz'.format(exchange, data_type, date_, symbols[0])
-    print('download and read data at {}'.format(os.path.join(TARDIS_DOWNLOAD_DIR, fname)))
-    opt_quote = pd.read_csv(os.path.join(TARDIS_DOWNLOAD_DIR, fname))
-    
-    fname = '{}_{}_{}_{}.csv.gz'.format(exchange, data_type, date_, symbols[1])
-    print('download and read data at {}'.format(os.path.join(TARDIS_DOWNLOAD_DIR, fname)))
-    PERP_quote = pd.read_csv(os.path.join(TARDIS_DOWNLOAD_DIR, fname))
-    return opt_quote, PERP_quote
+        #### data processing - PERP quote
+        PERP_quote['dt'] = pd.to_datetime(PERP_quote['timestamp'], unit='us')
+        PERP_quote['PERP_mid_price'] = (PERP_quote['ask_price']+PERP_quote['bid_price'])/2
+        PERP_quote_1 = PERP_quote.set_index('dt')['PERP_mid_price']
+        PERP_quote_2 = PERP_quote_1[~PERP_quote_1.index.duplicated(keep='last')]
+        PERP_quote_3 = PERP_quote_2.reindex(uni_index, method='ffill')
 
-def load_optchain_data(date1, maturity_date, freq, local_run=False):
+        #### data processing - option quote
+        opt_quote_parsed = opt_quote.pipe(DeribitUtils.parse_optSymbol_col)
+        opt_quote_parsed['timestamp_dt'] = pd.to_datetime(opt_quote_parsed['timestamp'], unit='us')
+
+        # only look at BTC
+        opt_quote_parsed = opt_quote_parsed.query('instrument=="BTC"')
+        opt_quote_parsed['exp_date'] = opt_quote_parsed['expire'].dt.date
+
+    else:
+        print('loading option quote and PERP data from server')
+        df_symbols = runq("deribitopt", "0!select distinct symbol from optquotes where date={}".format(date1.strftime('%Y.%m.%d')))
+        symbol_list = df_symbols[df_symbols['symbol'].str.contains('{}-'.format(coin))]['symbol'].tolist()
+        ret_dict = {}
+        for symbol in symbol_list:
+            print(symbol)
+            try:
+                df = oquotes(sym='{}@deribitopt'.format(symbol), freq='1Min', ts='exchtm', date=date1)
+                df['symbol'] = symbol
+                ret_dict[symbol] = df
+            except:
+                print(symbol, 'not available')
+        df1 = pd.concat(ret_dict.values())
+        df2 = df1.reset_index().rename(columns={'exchtm':'timestamp_dt','av':'ask_amount', 'ap':'ask_price','bv':'bid_amount','bp':'bid_price',
+                                       })
+        df3 = df2.head(20).drop(columns=['amb','ambb','m',])
+        opt_quote_parsed = df3.pipe(DeribitUtils.parse_optSymbol_col)
+        PERP_quote = pquotes(sym='{}-PERPETUAL@deribit'.format(coin), freq=freq, ts='exchtm',date=date1)
+        uni_index = pd.date_range(start=date1, end=date1+timedelta(days=1), freq='1Min')[:-1]
+        PERP_quote_3 = PERP_quote.reindex(uni_index)
+
+    return opt_quote_parsed, PERP_quote_3
+
+
+def load_optchain_data(date1, maturity_date, freq, coin, local_run=False):
     start_date = date1
     end_date = date1
     if local_run:
@@ -53,16 +99,16 @@ def load_optchain_data(date1, maturity_date, freq, local_run=False):
     else:
         start_date = date1
         end_date = date1
-        sys.path.append('/core/github/cryptoderiv-quant/')
-        from ct.utils import qoptchain
         print('loading option chain data from server')
         optchain = qoptchain(folder='deribitopt', date1=start_date, date2=end_date, maturity=maturity_date, freq=freq)
         
+
     return optchain
 
 
 
 def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', local_run=False):
+    print('local_run:', local_run)
     """
     produce three interactive scatter plots based on data items below:
         deribit option quote -> get best bid/ask price/quantity 
@@ -75,18 +121,13 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
         ask+bid quote amount across put/call and all strikes 
     """
     print('option date:{}, expire date:{}'.format(date, maturity_date))
-    opt_quote, PERP_quote = load_option_quote_and_perp_data(date, coin)
-    optchain = load_optchain_data(date, maturity_date, freq, local_run)
+    opt_quote_parsed, PERP_quote_3 = load_and_process_option_quote_and_perp_data(date, coin, freq, local_run)
+    display(opt_quote_parsed.head())
+    display(PERP_quote_3.head())
+    print()
+    optchain = load_optchain_data(date, maturity_date, freq, coin, local_run)
 
-    ### data processing - all
-    uni_index = pd.date_range(start=date, end=date+timedelta(days=1), freq='1Min')[1:]
-
-    #### data processing - PERP quote
-    PERP_quote['dt'] = pd.to_datetime(PERP_quote['timestamp'], unit='us')
-    PERP_quote['PERP_mid_price'] = (PERP_quote['ask_price']+PERP_quote['bid_price'])/2
-    PERP_quote_1 = PERP_quote.set_index('dt')['PERP_mid_price']
-    PERP_quote_2 = PERP_quote_1[~PERP_quote_1.index.duplicated(keep='last')]
-    PERP_quote_3 = PERP_quote_2.reindex(uni_index, method='ffill')
+    uni_index = pd.date_range(start=date, end=date+timedelta(days=1), freq='1Min')[:-1]
 
     #### data processing - opt chain
     optchain['mid_vol'] = 0.5*(optchain['aiv'] + optchain['biv'])
@@ -109,13 +150,6 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
     optchain_reduced_1a = optchain_reduced_1a[~optchain_reduced_1a.set_index(['type','strike','index']).index.duplicated(keep='last')]
 
     #### data processing - option quote
-    opt_quote_parsed = opt_quote.pipe(DeribitUtils.parse_optSymbol_col)
-    opt_quote_parsed['timestamp_dt'] = pd.to_datetime(opt_quote_parsed['timestamp'], unit='us')
-
-    # only look at BTC
-    opt_quote_parsed = opt_quote_parsed.query('instrument=="BTC"')
-    opt_quote_parsed['exp_date'] = opt_quote_parsed['expire'].dt.date
-
     # select relevant expire dates
     opt_quote_parsed_expire_i_c = opt_quote_parsed.query('exp_date==@maturity_date & type =="C"')
     opt_quote_parsed_expire_i_p = opt_quote_parsed.query('exp_date==@maturity_date & type =="P"')
@@ -212,8 +246,10 @@ if __name__ == '__main__':
     from sys import platform
     
     if platform == "linux" or platform == "linux2":
+        print(platform)
         local_run=False
     else:
+        print(platform)
         local_run=True
     date_ = datetime(y1,m1,d1).date()
     maturity_date = datetime(y2,m2,d2).date()

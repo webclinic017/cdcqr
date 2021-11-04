@@ -1,3 +1,4 @@
+import collections
 import pandas as pd
 from datetime import datetime, timedelta, date
 import plotly.express as px
@@ -84,7 +85,7 @@ def load_and_process_option_quote_and_perp_data(date1, coin, freq, local_run=Fal
         opt_quote_parsed['exp_date'] = opt_quote_parsed['expire'].dt.date
         PERP_quote = pquotes(sym='{}-PERPETUAL@deribit'.format(coin), freq=freq, ts='exchtm',date=date1)
         uni_index = pd.date_range(start=date1, end=date1+timedelta(days=1), freq='1Min')[:-1]
-        PERP_quote_3 = PERP_quote.reindex(uni_index)['m']
+        PERP_quote_3 = PERP_quote.reindex(uni_index).rename(columns={'m':'PERP_mid_price'})['PERP_mid_price']
 
     return opt_quote_parsed, PERP_quote_3
 

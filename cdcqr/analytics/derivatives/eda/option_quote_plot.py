@@ -198,7 +198,7 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
     fig1b = px.scatter(df_combined_ext, x="index", y="strike_shifted", size="bid_amount",  hover_data=['strike','bid_price','bid_amount','type', 'biv'], color="biv", title='',width=1500, height=1200)
     fig1c = px.scatter(df_combined_ext, x="index", y="strike_shifted", size="total_amount", hover_data=['strike','ask_price','ask_amount','bid_price','bid_amount','type', 'aiv','biv','mvol'], color="mvol", title='',width=1500, height=1200)
 
-    fig2 = px.line(df_underlying, x='index', y=['underlying_price', 'PERP_mid_price'], width=1500, height=1200)
+    fig2 = px.line(df_underlying, x='index', y=[df_underlying.underlying_price, df_underlying.PERP_mid_price], width=1500, height=1200)
 
     fig3a = go.Figure(data=fig1.data + fig2.data,)
     fig3a.update_layout(

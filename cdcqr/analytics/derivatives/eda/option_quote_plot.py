@@ -12,7 +12,7 @@ import sys
 import argparse
 from IPython.display import display
 sys.path.append('/core/github/cryptoderiv-quant/')
-from ct.utils import qoptchain, pquotes, runq, squotes
+from ct.utils import qoptchain, pquotes, runq, oquotes
 
 
 TARDIS_DOWNLOAD_DIR = os.path.join(LOCAL_DATA_DIR, 'tardis')
@@ -72,7 +72,7 @@ def load_and_process_option_quote_and_perp_data(date1, coin, freq, local_run=Fal
         ret_dict = {}
         for symbol in symbol_list:
             try:
-                df = squotes(sym='{}@deribitopt'.format(symbol), freq='1Min', ts='exchtm', date=date1, table='optquotes')
+                df = oquotes(sym='{}@deribitopt'.format(symbol), freq='1Min', ts='exchtm', date=date1)
                 df['symbol'] = symbol
                 ret_dict[symbol] = df
             except:

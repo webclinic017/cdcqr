@@ -70,7 +70,6 @@ def load_and_process_option_quote_and_perp_data(date1, coin, freq, local_run=Fal
         symbol_list = df_symbols[df_symbols['symbol'].str.contains('{}-'.format(coin))]['symbol'].tolist()
         ret_dict = {}
         for symbol in symbol_list:
-            print(symbol)
             try:
                 df = oquotes(sym='{}@deribitopt'.format(symbol), freq='1Min', ts='exchtm', date=date1)
                 df['symbol'] = symbol
@@ -82,6 +81,7 @@ def load_and_process_option_quote_and_perp_data(date1, coin, freq, local_run=Fal
                                        })
         df3 = df2.head(20).drop(columns=['amb','ambb','m',])
         opt_quote_parsed = df3.pipe(DeribitUtils.parse_optSymbol_col)
+        opt_quote_parsed['exp_date'] = opt_quote_parsed['expire'].dt.date
         PERP_quote = pquotes(sym='{}-PERPETUAL@deribit'.format(coin), freq=freq, ts='exchtm',date=date1)
         uni_index = pd.date_range(start=date1, end=date1+timedelta(days=1), freq='1Min')[:-1]
         PERP_quote_3 = PERP_quote.reindex(uni_index)
@@ -122,11 +122,9 @@ def deribit_option_quote_plot(date, maturity_date, freq='1Min', coin='BTC', loca
     """
     print('option date:{}, expire date:{}'.format(date, maturity_date))
     opt_quote_parsed, PERP_quote_3 = load_and_process_option_quote_and_perp_data(date, coin, freq, local_run)
-    display(opt_quote_parsed.head())
-    display(PERP_quote_3.head())
-    print()
+    #(opt_quote_parsed.head())
+    #display(PERP_quote_3.head())
     optchain = load_optchain_data(date, maturity_date, freq, coin, local_run)
-
     uni_index = pd.date_range(start=date, end=date+timedelta(days=1), freq='1Min')[:-1]
 
     #### data processing - opt chain

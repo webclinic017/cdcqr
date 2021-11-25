@@ -12,10 +12,10 @@ datasets.download(exchange="deribit",
                   #            "liquidations"],
                   data_types=["trades", 'quotes'],
 
-                  from_date="2021-10-29",
-                  to_date="2021-10-29",
-                  symbols=["BTC-PERPETUAL", "ETH-PERPETUAL", 'OPTIONS'],
-                  # symbols=['FUTURES'],
+                  from_date="2021-01-01",
+                  to_date="2021-11-01",
+                  # symbols=["BTC-PERPETUAL", "ETH-PERPETUAL", 'OPTIONS'],
+                  symbols=['OPTIONS'],
                   api_key=API_KEY,
                   download_dir=TARDIS_DOWNLOAD_DIR)
 

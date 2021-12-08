@@ -7,6 +7,7 @@ import time
 from collections import OrderedDict
 from cdcqr.common.config import LOCAL_DATA_DIR
 from functools import wraps
+import re
 
 
 def timeit(method):
@@ -113,3 +114,7 @@ def save_df(df, name='no_name'):
 def load_df(name):
     file_path = os.path.join(LOCAL_DATA_DIR, '{}.pickle'.format(name))
     return pd.read_pickle(file_path)
+
+
+def camel_case2snake_case(camel_case):
+    return re.sub(r'(?<!^)(?=[A-Z])', '_', camel_case).lower()

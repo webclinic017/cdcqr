@@ -6,6 +6,7 @@ from datetime import datetime as dt
 import time
 import requests
 import pandas as pd
+from cdcqr.common.utils import camel_case2snake_case
 
 
 def glassnode(url='https://api.glassnode.com/v1/metrics/transactions/transfers_volume_to_exchanges_mean',a='BTC',i='10m',s=dt(2021,8,1),Nretry=10,API_KEY=""):
@@ -35,12 +36,13 @@ def glassnode(url='https://api.glassnode.com/v1/metrics/transactions/transfers_v
 
 
 @timeit
-def get_glassnode_data(catagory, feature, underly, freq, start_time, api_key):
-    url ='https://api.glassnode.com/v1/metrics/{}/{}'.format(catagory, feature)
+def get_glassnode_data(category, feature, underly, freq, start_time, api_key):
+    url ='https://api.glassnode.com/v1/metrics/{}/{}'.format(category, feature)
     return glassnode(url, underly, freq, start_time, Nretry=10, API_KEY=api_key)
 
 
 def quantile_info(dff):
+    display(dff.head(5))
     q01 = dff.quantile(0.01).values[0]
     q02 = dff.quantile(0.02).values[0]
     q05 = dff.quantile(0.05).values[0]
@@ -49,3 +51,15 @@ def quantile_info(dff):
     q99 = dff.quantile(0.99).values[0]
     print(q01, q02, q05, q95, q98, q99)
     return q01, q02, q05, q95, q98, q99
+
+
+def url_parser(url):
+    att_dict = {}
+    for pair in url.split('&'):
+        [k,v] = pair.split('=')
+        att_dict[k] = v
+        
+    feature_camel_case = att_dict['m'].split('.')[1]
+    att_dict['feature'] = camel_case2snake_case(feature_camel_case)
+    att_dict['category'] = att_dict['m'].split('.')[0]
+    return att_dict

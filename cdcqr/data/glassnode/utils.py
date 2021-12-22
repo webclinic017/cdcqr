@@ -1,15 +1,12 @@
-import sys
-sys.path.append('/home/user/python-libs')
-from ct.utils import dt2ts
-from cdcqr.common.utils import timeit
+from cdcqr.ct.utils import dt2ts
+from cdcqr.common.utils import timeit, camel_case2snake_case
 from datetime import datetime as dt
 import time
 import requests
 import pandas as pd
-from cdcqr.common.utils import camel_case2snake_case
 
 
-def glassnode(url='https://api.glassnode.com/v1/metrics/transactions/transfers_volume_to_exchanges_mean',a='BTC',i='10m',s=dt(2021,8,1),Nretry=10,API_KEY=""):
+def glassnode(url='https://api.glassnode.com/v1/metrics/transactions/transfers_volume_to_exchanges_mean',a='BTC',i='10m',s=dt(2021,8,1), Nretry=10,API_KEY=""):
     """
     i
     1 month (1month)
@@ -19,15 +16,17 @@ def glassnode(url='https://api.glassnode.com/v1/metrics/transactions/transfers_v
     10 minutes (10m)
     
     """
-    print(url, a, i , s )
-    timestamp=dt2ts(s,delta='1s')
-    print(timestamp)
+    # print(url, a, i , s, u )
+    timestamp_s=dt2ts(s,delta='1s')
+    # print(timestamp_s)
+
     
     try:
-        res = requests.get(url,params={'a': a,'i':i,'s':timestamp,'api_key': API_KEY}) #, 's':1629500000
+        res = requests.get(url,
+                           params={'a': a,'i':i,'s':timestamp_s,'api_key': API_KEY, }) #, 's':1629500000
         df = pd.read_json(res.text, convert_dates=['t']).set_index('t') 
     except Exception as e:
-        print(e,res.text)
+        print(e, res.text)
         if Nretry==0:
             raise e
         time.sleep(120)

@@ -8,6 +8,7 @@ from collections import OrderedDict
 from cdcqr.common.config import LOCAL_DATA_DIR
 from functools import wraps
 import re
+from pandas_flavor import register_dataframe_method
 
 
 def timeit(method):
@@ -74,7 +75,21 @@ def setup_custom_logger(abs_file, log_level=logging.DEBUG):
     return logger
 
 
-@pd.api.extensions.register_dataframe_accessor("addbb")
+@register_dataframe_method
+def resample_pv(df1, freq='1D'):
+    def agg_f(cols):
+        ret = {}
+        for col in cols:
+            if col in ['o','h','l','c']:
+                ret[col] = 'last'
+            elif col=='v':
+                ret[col] = 'sum'
+        return ret
+    return df1.resample(freq).agg(agg_f(df1.columns))
+
+
+
+@register_dataframe_method
 def addbb(df, lags, cols=None, inplace=False, methodma='ewm', methodstd='ewm', nstdh=2, nstdl=2, retfnames=False,
           dropna=True):
     df = df if inplace else df.copy()
@@ -104,16 +119,38 @@ def addbb(df, lags, cols=None, inplace=False, methodma='ewm', methodstd='ewm', n
     if not inplace and not retfnames:
         return df
 
-
-def save_df(df, name='no_name'):
-    file_path = os.path.join(LOCAL_DATA_DIR, '{}.pickle'.format(name))
-    df.to_pickle(file_path)
+    
+@register_dataframe_method
+def save(df, name='no_name', file_format='pickle'):
+    file_path = os.path.join(LOCAL_DATA_DIR, '{}.{}'.format(name, file_format))
+    if file_format=='pickle':
+        df.to_pickle(file_path)
+    elif file_format=='csv':
+        df.to_csv(file_path)
     print('saved df to {}'.format(file_path))
 
 
-def load_df(name):
-    file_path = os.path.join(LOCAL_DATA_DIR, '{}.pickle'.format(name))
-    return pd.read_pickle(file_path)
+def load_df(name, file_format='pickle'):
+
+    if file_format=='pickle':
+        try:
+            file_path = os.path.join(LOCAL_DATA_DIR, '{}.{}'.format(name, file_format))
+            df = pd.read_pickle(file_path)
+            return df
+        except:
+            pass
+        
+        try:
+            file_path = os.path.join(LOCAL_DATA_DIR, '{}.{}'.format(name, 'pkl'))
+            df = pd.read_pickle(file_path)
+            return df
+        except:
+            pass
+            
+    elif file_format=='csv':
+        df = pd.read_csv(file_path)
+        return df
+
 
 
 def camel_case2snake_case(camel_case):
